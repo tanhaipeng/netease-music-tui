@@ -3,6 +3,7 @@ extern crate gstreamer_player as gst_player;
 
 use gst::prelude::*;
 use gst::ClockTime;
+use std::sync::mpsc::Sender;
 
 // TODO: change gstreamer for more less dependence diy player
 
@@ -11,14 +12,23 @@ pub enum PlayerCommand {
     Play,
     Pause,
     Stop,
-    Seek(u32),
+    PlayPause,
+    Seek(i32),
     Next,
     Previous,
     Load(String),
-    Status,
+    Position(i32, u64),
+    Metadata(MetaInfo, Sender<String>),
+}
+
+#[allow(unused)]
+pub enum MetaInfo {
+    Volume,
+    Shuffle,
+    Position,
     LoopStatus,
-    Postion,
-    Metadata,
+    Status,
+    Info,
 }
 
 pub struct Nplayer {
@@ -57,6 +67,11 @@ impl Nplayer {
         self.player.play()
     }
 
+    #[allow(unused)]
+    pub fn stop(&self) {
+        self.player.stop()
+    }
+
     pub fn get_position(&self) -> Option<u64> {
         self.player.get_position().mseconds()
     }
@@ -78,6 +93,18 @@ impl Nplayer {
             song_progress_ms - 3000
         };
         self.player.seek(ClockTime::from_mseconds(next_duration))
+    }
+
+    #[allow(unused)]
+    pub fn seek(&mut self, offset: i32) {
+        let next_duration = self.get_position().unwrap() as i32 + (offset * 1000);
+        self.player
+            .seek(ClockTime::from_mseconds(next_duration as u64))
+    }
+
+    #[allow(unused)]
+    pub fn position(&mut self, position: u64) {
+        self.player.seek(ClockTime::from_mseconds(position))
     }
 
     pub fn increase_volume(&mut self) {
