@@ -1,8 +1,8 @@
 use futures::channel::oneshot;
-use std::path::PathBuf;
 use tempfile::NamedTempFile;
 use super::fetch::fetch_data;
 use super::track::Track;
+use std::time;
 
 use std::thread;
 use std::fs;
@@ -36,6 +36,8 @@ pub struct Player {
     pub state: PlayerState,
     pub current: Option<Track>,
     pub sink: rodio::Sink,
+    pub stream: rodio::OutputStream,
+    pub stream_handle: rodio::OutputStreamHandle,
 }
 
 // player
@@ -48,6 +50,7 @@ impl Player {
     // where
         // F: FnOnce() -> Box<dyn Sink> + Send + 'static,
     {
+        // let (_, stream_handle) = rodio::OutputStream::try_default().unwrap();
         let (stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
         let sink = rodio::Sink::try_new(&stream_handle).unwrap();
         // let endpoint =
@@ -57,7 +60,9 @@ impl Player {
         Player {
             state: PlayerState::Stopped,
             current: None,
-            sink: sink,
+            sink,
+            stream,
+            stream_handle,
             // endpoint: endpoint,
         }
     }
@@ -82,8 +87,7 @@ impl Player {
 
         let buffer = NamedTempFile::new().unwrap();
         let path = buffer.path().to_string_lossy().to_string();
-        debug!("{:#?}", path);
-        let pathbuf = PathBuf::from(path);
+        // let pathbuf = PathBuf::from(path);
 
         let (ptx, mut prx) = oneshot::channel::<String>();
 
@@ -96,7 +100,7 @@ impl Player {
                     Ok(p) => {
                         match p {
                             Some(_) => {
-                                match Track::load(pathbuf) {
+                                match Track::load(path) {
                                     Ok(track) => {
                                         let mut track = track;
                                         self.load_track(track.clone(), start_playing);
@@ -113,14 +117,15 @@ impl Player {
                     }
                     Err(_) => {}
                 }
+                let t = time::Duration::from_millis(250);
+                thread::sleep(t);
             }
         }
     }
 
     pub fn load_track(&mut self, track: Track, playing: bool) {
         if playing {
-            let path = track.file.to_string_lossy().to_string();
-            let f = std::fs::File::open(&path).unwrap();
+            let f = std::fs::File::open(&track.file).unwrap();
             let source = rodio::Decoder::new(std::io::BufReader::new(f)).unwrap();
 
             self.sink.play();
@@ -131,7 +136,7 @@ impl Player {
     pub fn start(&mut self) {
         let vol = self.sink.volume();
         self.sink.stop();
-        // self.sink = rodio::Sink::new(&self.endpoint);
+        self.sink = rodio::Sink::try_new(&self.stream_handle).unwrap();
         self.set_volume(vol);
     }
 

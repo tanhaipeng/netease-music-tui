@@ -88,6 +88,22 @@ This table shows some key binds
 | Jump to next page | \<Ctrl+f> | Search result \| top list |
 | Jump to previous page | \<Ctrl+b> | Search result \| top list |
 
+## custom theme
+
+user can custom some theme color in config file. such as:
+
+```
+hover = "#565656"
+active = "#abe047"
+other = "#eb4129"
+```
+
+hover means hover block border color
+active means current select block border color
+other means other block border color
+
+text color will add in the future.
+
 ## Dev plan
 - [x] Djradio and djprogram
 - [ ] User page
